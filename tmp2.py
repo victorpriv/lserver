@@ -56,21 +56,11 @@ async def get_audio():
     return {"error": "File not found"}
 
 
-script = {}
-"""
-script["00:05"] = "1,"
-script["00:20"] = "2,"
-script["00:30"] = "2,1"
-"""
-@app.post("/play")
-async def play_now(request: Request):
-    data = await request.json()
-    script.update(data)
-   
-    print(script) 
-    
+
+def start():
+      
     process = subprocess.Popen(
-        ["mpv", "./static/1.mp3", ""],  # example command
+        ["mpv", "--ao=null","./static/1.mp3", ""],  # example command
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
@@ -140,7 +130,30 @@ async def play_now(request: Request):
         else:
             print("No match")
 
+
+script = {}
+"""
+script["00:05"] = "1,"
+script["00:20"] = "2,"
+script["00:30"] = "2,1"
+"""
+@app.post("/play")
+async def play_now(request: Request):
+    data = await request.json()
+    script.update(data)
+   
+    print(script) 
+
+
+    thread = threading.Thread(target=start, daemon=True)
+    thread.start()
     
+   # file_path = "static/1.mp3"
+    #if os.path.exists(file_path):
+      #  return FileResponse(file_path, media_type="audio/mpeg", filename=file_path)
+    #return {"error": "File not found"}
+
+   
     #pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
    # pygame.init()
     
