@@ -10,6 +10,33 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import subprocess
+import re
+
+# Start MPV with socket for control
+#os.system("mpv  ./static/1.mp3 --no-video  --input-ipc-server=&")
+time.sleep(1)
+
+# Ask for playback time
+#os.system("""echo '{ "command": ["get_property", "playback-time"] }' """)
+
+
+def hhmmss_to_mmss(time_str):
+    parts = time_str.split(":")
+    if len(parts) == 3:
+        return f"{parts[1]}:{parts[2]}"
+    elif len(parts) == 2:
+        return time_str
+    else:
+        return "00:00"  # fallback
+
+# Example usage
+original = "00:03:42"
+
+
+
+
+
 
 app = FastAPI()
 
@@ -41,19 +68,91 @@ async def play_now(request: Request):
     script.update(data)
    
     print(script) 
-  
-    pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
-    pygame.init()
     
-    pygame.mixer.music.load("static/1.mp3")
+    process = subprocess.Popen(
+        ["mpv", "./static/1.mp3", ""],  # example command
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+        text=True,                 # shorthand for universal_newlines=True
+        encoding='utf-8',          # force UTF-8 decoding
+        errors='replace'           # avoid crash on weird characters
+    )
+
+    # Print each line as it comes
+    for line in process.stdout:
+        #converted = hhmmss_to_mmss(original)
+    
+        # Match the current time using regex
+        match = re.search(r"A:\s*(\d{2}:\d{2}:\d{2})", line.strip())
+
+        if match:
+            current_time = match.group(1)
+
+            current_time =hhmmss_to_mmss(current_time)
+            print(current_time)  # ➜ 00:00:00
+
+            if current_time in script:
+                print(script[current_time])
+                data = [0] * 5*7
+                for i in range(1,5):
+                    if str(i) in script[current_time]:
+                    
+                        num = i
+                        if num>1:
+                            num = (num-1)*7
+                        else:
+                            num -= 1
+                        
+                        data[num] = 255
+                        data[num+1] = 255
+                        
+                        data[num+2] = 255
+                        
+                        data[num+3] =0
+                        data[num+4] = 0
+                        data[num+5] = 0
+                        data[num+6] = 0
+                        
+
+                    else:
+                        num = i
+                        if num>1:
+                            num = (num-1)*7
+                        
+                        data[num+1] = 0
+                        
+                        data[num+2] = 0
+                        
+                        data[num+3] = 0
+                        
+                        data[num+4] = 0
+
+                        data[num+5] = 0
+                        data[num+6] = 0
+                        data[num+7] = 0
+
+                print(data)
+
+                sender[universe].dmx_data = data + [0] * (512 - 5*7)    
+            time.sleep(0.1)
+
+        else:
+            print("No match")
+
+    
+    #pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
+   # pygame.init()
+    
+    #pygame.mixer.music.load("static/1.mp3")
     # Schedule to run in 3 seconds
 
 
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10) 
+   # while pygame.mixer.music.get_busy():
+      #  pygame.time.Clock().tick(10) 
 
-    play_music("static/1.mp3")
-    monitor_music()
+   # play_music("static/1.mp3")
+    #monitor_music()
     return {"success": "Played"}
 
 #timer = threading.Timer(3.0, say_hello)
